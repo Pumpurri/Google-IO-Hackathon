@@ -2,11 +2,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    gemini_api_key: str = ""
+    google_cloud_project: str = ""
+    google_cloud_location: str = "us-central1"
     gmi_api_key: str = ""
     gmi_vision_model: str = "openai/gpt-4o"
-    gemini_batch_model: str = "gemini-3.1-flash-lite"
-    gemini_live_model: str = "models/gemini-3.1-flash-live-preview"
+    gemini_batch_model: str = "gemini-2.5-flash"
+    gemini_live_model: str = "gemini-2.0-flash-live-001"
     scoring_backend: str = "direct"  # "direct" or "rocketride"
     allowed_origins: list[str] = ["http://localhost:5173"]
 

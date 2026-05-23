@@ -19,7 +19,7 @@ export default function App() {
 
   const isPerforming = game.phase === 'performing'
 
-  usePoseOverlay({ enabled: true, videoRef, canvasRef })
+  usePoseOverlay({ enabled: false, videoRef, canvasRef })
   useFrameCapture({ enabled: isPerforming, videoRef, send: game.send })
 
   async function handleEnter(name: string) {

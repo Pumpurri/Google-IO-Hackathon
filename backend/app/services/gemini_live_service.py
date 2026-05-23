@@ -65,7 +65,11 @@ class GeminiLiveSession:
 
     async def start(self, reference_image_b64: str) -> None:
         try:
-            client = genai.Client(api_key=settings.gemini_api_key)
+            client = genai.Client(
+                vertexai=True,
+                project=settings.google_cloud_project,
+                location=settings.google_cloud_location,
+            )
 
             config = types.LiveConnectConfig(
                 response_modalities=[types.Modality.AUDIO],

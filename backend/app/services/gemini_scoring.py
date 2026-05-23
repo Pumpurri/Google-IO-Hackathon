@@ -11,7 +11,11 @@ from app.utils.images import pick_key_frames, strip_data_url_prefix
 
 logger = logging.getLogger(__name__)
 
-gemini_client = genai.Client(api_key=settings.gemini_api_key)
+gemini_client = genai.Client(
+    vertexai=True,
+    project=settings.google_cloud_project,
+    location=settings.google_cloud_location,
+)
 
 
 def _text(t: str) -> types.Part:

@@ -15,6 +15,16 @@ CELEBRATIONS_DIR = os.path.join(
 
 async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
     """Run one round: countdown → perform → judging → results."""
+    try:
+        await _run_room_game_inner(room_id, matchmaker, score_fn)
+    except Exception:
+        logger.exception("Game loop crashed for room %s — sending mock results", room_id)
+        room = matchmaker.rooms.get(room_id)
+        if room:
+            await _send_mock_results(room, matchmaker)
+
+
+async def _run_room_game_inner(room_id: str, matchmaker, score_fn=None) -> None:
     room = matchmaker.rooms.get(room_id)
     if not room:
         return
@@ -59,9 +69,11 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
 
     await asyncio.sleep(15)
 
-    # Dramatic judging sequence — stop live commentary before judging begins
+    # Stop live commentary — timeout to prevent blocking if WebSocket hangs
     try:
-        await stop_live_session(room_id)
+        await asyncio.wait_for(stop_live_session(room_id), timeout=3.0)
+    except asyncio.TimeoutError:
+        logger.warning("Gemini Live stop timed out for room %s — continuing", room_id)
     except Exception:
         logger.warning("Gemini Live stop failed for room %s", room_id)
 
@@ -72,18 +84,19 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
     await asyncio.sleep(1.5)
     await matchmaker.broadcast(room, {"type": "judging", "stage": "deliberating"})
 
-    # Score (runs during the deliberating stage)
+    # Score (runs during the deliberating stage) — timeout to prevent hang
     if score_fn:
         try:
-            result = await score_fn(room)
+            result = await asyncio.wait_for(score_fn(room), timeout=30.0)
             room.phase = RoomPhase.RESULTS
             await matchmaker.broadcast(room, result)
+        except asyncio.TimeoutError:
+            logger.warning("Scoring timed out for room %s — using mock", room_id)
+            await _send_mock_results(room, matchmaker)
         except Exception:
             logger.exception("Scoring failed for room %s", room_id)
-            # Send mock results so the demo doesn't freeze
             await _send_mock_results(room, matchmaker)
     else:
-        # No scoring service yet — send mock results
         await _send_mock_results(room, matchmaker)
 
 
