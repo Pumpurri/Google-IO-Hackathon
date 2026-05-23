@@ -12,4 +12,5 @@ dependencies = [
   "httpx",
   "pillow",
   "websockets",
+  "rocketride",
 ]

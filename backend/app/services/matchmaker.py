@@ -66,7 +66,29 @@ class Matchmaker:
                     asyncio.create_task(self.start_game_callback(room.room_id))
 
         elif msg_type == "leave":
-            await self.disconnect(player_id)
+            await self._leave_room(player)
+
+    async def _leave_room(self, player: PlayerConnection) -> None:
+        """Leave the current room and re-queue for a new match."""
+        if player.room_id:
+            room = self.rooms.pop(player.room_id, None)
+            if room:
+                for p in room.players:
+                    if p.player_id != player.player_id:
+                        try:
+                            await self._send(p, {"type": "opponent_disconnected"})
+                        except Exception:
+                            pass
+                        p.room_id = None
+                        self.waiting.append(p)
+                        await self._send(p, {"type": "waiting"})
+            player.room_id = None
+
+        self.waiting.append(player)
+        await self._send(player, {"type": "waiting"})
+
+        if len(self.waiting) >= 2:
+            await self._create_room()
 
     async def disconnect(self, player_id: str) -> None:
         player = self.players.pop(player_id, None)

@@ -19,8 +19,8 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
 
     # Performance window
     room.phase = RoomPhase.PERFORMING
-    await matchmaker.broadcast(room, {"type": "perform", "durationSeconds": 5})
-    await asyncio.sleep(5)
+    await matchmaker.broadcast(room, {"type": "perform", "durationSeconds": 15})
+    await asyncio.sleep(15)
 
     # Judging
     room.phase = RoomPhase.JUDGING

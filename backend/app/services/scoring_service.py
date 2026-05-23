@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 
+from app.core.config import settings
 from app.models.game import Room
 from app.models.scoring import BattleResult, JudgeScore, PlayerScore
 from app.services.gmi_scoring import score_with_gmi
@@ -35,6 +36,14 @@ async def score_room(room: Room) -> dict:
         ref_image_data_url = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="  # tiny placeholder
         logger.warning("No reference image found at %s", ref_image_path)
 
+    # Choose style scorer: RocketRide pipeline or direct Gemini
+    if settings.scoring_backend == "rocketride":
+        from app.services.rocketride_scoring import score_with_rocketride
+        style_scorer = score_with_rocketride
+        logger.info("Using RocketRide pipeline for style scoring")
+    else:
+        style_scorer = score_with_gemini_batch
+
     async def score_player(player_id: str) -> tuple[str, PlayerScore]:
         frames = room.frames.get(player_id, [])
 
@@ -47,7 +56,7 @@ async def score_room(room: Room) -> dict:
 
         gmi_result, gemini_result = await asyncio.gather(
             score_with_gmi(frames, ref_image_data_url, celebration_name),
-            score_with_gemini_batch(frames, ref_image_data_url, celebration_name),
+            style_scorer(frames, ref_image_data_url, celebration_name),
         )
 
         final = aggregate_score(gmi_result.score, gemini_result.score)

@@ -10,14 +10,38 @@ CELEBRATIONS = [
     {
         "id": "mbappe-arms",
         "name": "Mbappe Arms Crossed",
-        "clipUrl": "/celebrations/mbappe-arms.mp4",
+        "clipUrl": "/celebrations/mbappe-arms.mov",
         "referenceImageUrl": "/celebrations/mbappe-arms-ref.jpg",
     },
     {
-        "id": "messi-wide",
-        "name": "Messi Arms Wide",
-        "clipUrl": "/celebrations/messi-wide.mp4",
-        "referenceImageUrl": "/celebrations/messi-wide-ref.jpg",
+        "id": "haaland-zen",
+        "name": "Haaland Meditation",
+        "clipUrl": "/celebrations/haaland-zen.mp4",
+        "referenceImageUrl": "/celebrations/haaland-zen-ref.jpg",
+    },
+    {
+        "id": "crowd-pump",
+        "name": "The Crowd Pump",
+        "clipUrl": "/celebrations/crowd-pump.mp4",
+        "referenceImageUrl": "/celebrations/crowd-pump-ref.jpg",
+    },
+    {
+        "id": "the-griddy",
+        "name": "The Griddy",
+        "clipUrl": "/celebrations/the-griddy.mp4",
+        "referenceImageUrl": "/celebrations/the-griddy-ref.jpg",
+    },
+    {
+        "id": "knee-slide",
+        "name": "Knee Slide",
+        "clipUrl": "/celebrations/knee-slide.mp4",
+        "referenceImageUrl": "/celebrations/knee-slide-ref.jpg",
+    },
+    {
+        "id": "screen-celebration",
+        "name": "The Screen Celebration",
+        "clipUrl": "/celebrations/screen-celebration.mov",
+        "referenceImageUrl": "/celebrations/screen-celebration-ref.jpg",
     },
 ]
 
