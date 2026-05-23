@@ -10,6 +10,8 @@ type BattleViewProps = {
   celebration: Celebration | null
   commentary: string[]
   myScore: number | null
+  liveScores: Record<string, number> | null
+  playerId: string | null
 }
 
 export function BattleView({
@@ -21,6 +23,8 @@ export function BattleView({
   celebration,
   commentary,
   myScore,
+  liveScores,
+  playerId,
 }: BattleViewProps) {
   const opponentStatus = {
     waiting: 'Waiting for opponent...',
@@ -33,6 +37,16 @@ export function BattleView({
   }[phase]
 
   const showCountdownOverlay = phase === 'countdown' && countdownValue !== null
+
+  const myLiveScore = phase === 'performing' && liveScores && playerId
+    ? liveScores[playerId] ?? null
+    : null
+  const opponentId = liveScores && playerId
+    ? Object.keys(liveScores).find((id) => id !== playerId) ?? null
+    : null
+  const oppLiveScore = phase === 'performing' && liveScores && opponentId
+    ? liveScores[opponentId] ?? null
+    : null
 
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
@@ -94,7 +108,15 @@ export function BattleView({
           <span className="absolute top-2 left-2 rounded bg-zinc-900/80 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-emerald-400">
             You
           </span>
-          {myScore !== null && (
+          {myLiveScore !== null && (
+            <div className="absolute top-2 right-2 rounded-lg bg-zinc-900/90 px-3 py-1.5 border border-emerald-400/40 animate-pulse">
+              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">Live</p>
+              <p className="text-2xl font-black text-emerald-400 tabular-nums transition-all duration-500">
+                {myLiveScore.toFixed(1)}
+              </p>
+            </div>
+          )}
+          {myScore !== null && myLiveScore === null && (
             <div className="absolute top-2 right-2 rounded-lg bg-zinc-900/90 px-3 py-1.5 border border-emerald-400/20">
               <p className="text-xs text-zinc-500 uppercase">Score</p>
               <p className="text-xl font-black text-white tabular-nums">{myScore.toFixed(1)}</p>
@@ -127,6 +149,14 @@ export function BattleView({
               <span className="absolute top-2 left-2 rounded bg-zinc-900/80 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400">
                 Reference
               </span>
+              {oppLiveScore !== null && (
+                <div className="absolute top-2 right-2 rounded-lg bg-zinc-900/90 px-3 py-1.5 border border-red-400/40 animate-pulse">
+                  <p className="text-[10px] font-bold text-red-400 uppercase tracking-wider">Opponent</p>
+                  <p className="text-2xl font-black text-red-400 tabular-nums transition-all duration-500">
+                    {oppLiveScore.toFixed(1)}
+                  </p>
+                </div>
+              )}
             </>
           ) : phase === 'judging' ? (
             <div className="text-center space-y-3">

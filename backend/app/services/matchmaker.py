@@ -9,6 +9,7 @@ from fastapi import WebSocket
 
 from app.models.game import PlayerConnection, Room, RoomPhase
 from app.services.celebrations import pick_random_celebration
+from app.services.gemini_live_service import forward_frame, stop_live_session
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,9 @@ class Matchmaker:
             room = self.rooms.get(player.room_id)
             if room and room.phase == RoomPhase.PERFORMING:
                 room.frames[player_id].append(message["frame"])
+                asyncio.create_task(
+                    forward_frame(room.room_id, player_id, message["frame"])
+                )
 
         elif msg_type == "rematch" and player.room_id:
             room = self.rooms.get(player.room_id)
@@ -71,6 +75,7 @@ class Matchmaker:
     async def _leave_room(self, player: PlayerConnection) -> None:
         """Leave the current room and re-queue for a new match."""
         if player.room_id:
+            asyncio.create_task(stop_live_session(player.room_id))
             room = self.rooms.pop(player.room_id, None)
             if room:
                 for p in room.players:
@@ -100,6 +105,7 @@ class Matchmaker:
 
         # Clean up room
         if player.room_id:
+            asyncio.create_task(stop_live_session(player.room_id))
             room = self.rooms.pop(player.room_id, None)
             if room:
                 for p in room.players:

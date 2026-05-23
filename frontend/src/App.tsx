@@ -43,6 +43,8 @@ export default function App() {
         myScore={
           game.scores && game.playerId ? game.scores[game.playerId]?.final ?? null : null
         }
+        liveScores={game.liveScores}
+        playerId={game.playerId}
       />
       {game.phase === 'results' && game.playerId && game.winnerId && game.scores && (
         <ResultsModal

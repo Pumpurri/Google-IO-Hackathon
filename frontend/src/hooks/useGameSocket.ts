@@ -10,6 +10,7 @@ type GameState = {
   countdownValue: number | null
   timerValue: number | null
   commentary: string[]
+  liveScores: Record<string, number> | null
   winnerId: string | null
   scores: Record<string, PlayerScore> | null
 }
@@ -23,6 +24,7 @@ const INITIAL_STATE: GameState = {
   countdownValue: null,
   timerValue: null,
   commentary: [],
+  liveScores: null,
   winnerId: null,
   scores: null,
 }
@@ -58,6 +60,7 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             opponentId: msg.opponentId,
             celebration: msg.celebration,
             commentary: [],
+            liveScores: null,
             winnerId: null,
             scores: null,
           }))
@@ -97,6 +100,10 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
           setState((s) => ({ ...s, commentary: [...s.commentary, msg.text] }))
           break
 
+        case 'live_scores':
+          setState((s) => ({ ...s, liveScores: msg.scores }))
+          break
+
         case 'judging':
           if (timerRef.current) clearInterval(timerRef.current)
           setState((s) => ({ ...s, phase: 'judging', timerValue: null }))
@@ -122,6 +129,7 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             countdownValue: null,
             timerValue: null,
             commentary: [],
+            liveScores: null,
           }))
           break
 

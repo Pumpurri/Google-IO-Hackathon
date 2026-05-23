@@ -32,6 +32,7 @@ export type ServerMessage =
   | { type: 'countdown'; seconds: number }
   | { type: 'perform'; durationSeconds: number }
   | { type: 'commentary'; text: string }
+  | { type: 'live_scores'; scores: Record<string, number> }
   | { type: 'judging' }
   | { type: 'results'; winnerId: string; scores: Record<string, PlayerScore> }
   | { type: 'opponent_disconnected' }
