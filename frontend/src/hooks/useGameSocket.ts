@@ -5,7 +5,9 @@ import { useCommentaryAudio } from './useCommentaryAudio'
 type GameState = {
   phase: GamePhase
   playerId: string | null
+  playerName: string | null
   opponentId: string | null
+  opponentName: string | null
   roomId: string | null
   celebration: Celebration | null
   countdownValue: number | null
@@ -22,7 +24,9 @@ type GameState = {
 const INITIAL_STATE: GameState = {
   phase: 'landing',
   playerId: null,
+  playerName: null,
   opponentId: null,
+  opponentName: null,
   roomId: null,
   celebration: null,
   countdownValue: null,
@@ -36,7 +40,7 @@ const INITIAL_STATE: GameState = {
   scores: null,
 }
 
-export function useGameSocket(wsUrl: string, enabled: boolean) {
+export function useGameSocket(wsUrl: string, enabled: boolean, playerName?: string | null) {
   const wsRef = useRef<WebSocket | null>(null)
   const [state, setState] = useState<GameState>(INITIAL_STATE)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -53,7 +57,10 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
 
       switch (msg.type) {
         case 'welcome':
-          setState((s) => ({ ...s, playerId: msg.playerId }))
+          setState((s) => ({ ...s, playerId: msg.playerId, playerName: playerName ?? null }))
+          if (playerName) {
+            ws.send(JSON.stringify({ type: 'set_name', name: playerName }))
+          }
           break
 
         case 'waiting':
@@ -66,6 +73,7 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             phase: 'matched',
             roomId: msg.roomId,
             opponentId: msg.opponentId,
+            opponentName: msg.opponentName ?? null,
             celebration: msg.celebration,
             commentary: [],
             liveScores: null,

@@ -22,7 +22,7 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
     # Get Ready — let players study the celebration
     room.phase = RoomPhase.COUNTDOWN
     await matchmaker.broadcast(room, {"type": "countdown", "seconds": -1, "label": "STUDY THE MOVE"})
-    await asyncio.sleep(4)
+    await asyncio.sleep(10)
 
     # Countdown ticks from server
     for n in range(5, 0, -1):
@@ -49,6 +49,7 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
         await start_live_session(
             room_id=room_id,
             player_ids=[p.player_id for p in room.players],
+            player_names={p.player_id: p.name or p.player_id for p in room.players},
             celebration_name=celebration.get("name", "Unknown"),
             reference_image_b64=ref_b64,
             broadcast_cb=broadcast_live,
@@ -58,13 +59,12 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
 
     await asyncio.sleep(15)
 
-    # Stop Gemini Live session
+    # Dramatic judging sequence — stop live commentary before judging begins
     try:
         await stop_live_session(room_id)
     except Exception:
         logger.warning("Gemini Live stop failed for room %s", room_id)
 
-    # Dramatic judging sequence
     room.phase = RoomPhase.JUDGING
     await matchmaker.broadcast(room, {"type": "judging", "stage": "analyzing"})
     await asyncio.sleep(1.5)

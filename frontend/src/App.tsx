@@ -13,16 +13,17 @@ export default function App() {
   const { videoRef, state: camState, start: startCam } = useWebcam()
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [connected, setConnected] = useState(false)
+  const [playerName, setPlayerName] = useState<string | null>(null)
 
-  const game = useGameSocket(WS_URL, connected)
+  const game = useGameSocket(WS_URL, connected, playerName)
 
   const isPerforming = game.phase === 'performing'
-  const showSkeleton = game.phase === 'countdown' || isPerforming
 
-  usePoseOverlay({ enabled: showSkeleton, videoRef, canvasRef })
+  usePoseOverlay({ enabled: true, videoRef, canvasRef })
   useFrameCapture({ enabled: isPerforming, videoRef, send: game.send })
 
-  async function handleEnter() {
+  async function handleEnter(name: string) {
+    setPlayerName(name)
     await startCam()
     setConnected(true)
   }
@@ -47,6 +48,8 @@ export default function App() {
         }
         liveScores={game.liveScores}
         playerId={game.playerId}
+        playerName={game.playerName}
+        opponentName={game.opponentName}
         opponentFrame={game.opponentFrame}
         judgingStage={game.judgingStage}
       />
@@ -55,6 +58,7 @@ export default function App() {
           myPlayerId={game.playerId}
           winnerId={game.winnerId}
           scores={game.scores}
+          opponentName={game.opponentName}
           onRematch={() => game.send({ type: 'rematch' })}
           onNewMatch={() => game.send({ type: 'leave' })}
         />

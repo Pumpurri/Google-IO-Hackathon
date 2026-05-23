@@ -51,11 +51,16 @@ async def score_with_rocketride(
         question.addInstruction(
             "Scoring criteria",
             "Evaluate energy, expressiveness, body commitment, and overall style. "
-            "Be specific in feedback. 7+ means great performance.",
+            "Your feedback MUST be 1-2 sentences max and absolutely HILARIOUS. "
+            "Use gen-z slang, internet humor, and meme references. "
+            "If they killed it, go full hype beast (\"actual legend behavior, this person doesn't celebrate they TRANSCEND\"). "
+            "If they flopped, ROAST them (\"bro moved like a loading screen\", \"giving mannequin-at-Zara energy\"). "
+            f"Always reference the specific celebration ('{celebration_name}') they attempted. "
+            "Be devastatingly funny, not mean-spirited. 7+ means great performance.",
         )
         question.addExample(
             "Player does Ronaldo SIUU with full jump and arm pull",
-            {"score": 8.5, "feedback": "Explosive energy with great arm extension on the landing."},
+            {"score": 8.5, "feedback": "The SIUU was so crispy Ronaldo himself would shed a single tear — absolute main character energy."},
         )
         question.addContext(
             {

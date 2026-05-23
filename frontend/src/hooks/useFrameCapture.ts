@@ -32,7 +32,7 @@ export function useFrameCapture({ enabled, videoRef, send }: UseFrameCaptureOpti
       if (frame) {
         send({ type: 'frame', frame, capturedAtMs: Date.now() })
       }
-    }, 500) // 2 FPS
+    }, 250) // 4 FPS
 
     return () => {
       if (intervalRef.current) {

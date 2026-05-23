@@ -28,7 +28,7 @@ export type GamePhase =
 export type ServerMessage =
   | { type: 'welcome'; playerId: string }
   | { type: 'waiting' }
-  | { type: 'matched'; roomId: string; playerId: string; opponentId: string; celebration: Celebration }
+  | { type: 'matched'; roomId: string; playerId: string; opponentId: string; opponentName?: string; celebration: Celebration }
   | { type: 'countdown'; seconds: number; label?: string }
   | { type: 'perform'; durationSeconds: number }
   | { type: 'commentary'; text: string }
@@ -42,6 +42,7 @@ export type ServerMessage =
 
 export type ClientMessage =
   | { type: 'ready' }
+  | { type: 'set_name'; name: string }
   | { type: 'frame'; frame: string; capturedAtMs: number }
   | { type: 'rematch' }
   | { type: 'leave' }

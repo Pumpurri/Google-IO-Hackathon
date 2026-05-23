@@ -13,6 +13,8 @@ type BattleViewProps = {
   myScore: number | null
   liveScores: Record<string, number> | null
   playerId: string | null
+  playerName: string | null
+  opponentName: string | null
   opponentFrame: string | null
   judgingStage: string | null
 }
@@ -29,6 +31,8 @@ export function BattleView({
   myScore,
   liveScores,
   playerId,
+  playerName,
+  opponentName,
   opponentFrame,
   judgingStage,
 }: BattleViewProps) {
@@ -49,6 +53,11 @@ export function BattleView({
   const winning = myLiveScore !== null && oppLiveScore !== null
     ? myLiveScore > oppLiveScore ? 'me' : myLiveScore < oppLiveScore ? 'opp' : 'tie'
     : null
+
+  // Mogging bar percentage — 50% = tied, >50% = you winning, <50% = getting mogged
+  const mogPct = myLiveScore !== null && oppLiveScore !== null
+    ? Math.max(10, Math.min(90, 50 + (myLiveScore - oppLiveScore) * 5))
+    : 50
 
   return (
     <div className="h-screen bg-black flex flex-col overflow-hidden">
@@ -86,8 +95,8 @@ export function BattleView({
         )}
       </div>
 
-      {/* Main battle area — full screen 3-column */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-0.5 relative">
+      {/* Main battle area — full screen 2-column */}
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0.5 relative">
         {/* LEFT — You */}
         <div className="relative overflow-hidden bg-black">
           <video
@@ -107,7 +116,7 @@ export function BattleView({
           {/* Your label */}
           <div className="absolute top-14 left-3 flex items-center gap-2">
             <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 drop-shadow-lg">You</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 drop-shadow-lg">{playerName ?? 'You'}</span>
           </div>
 
           {/* Your live score — BIG */}
@@ -138,51 +147,6 @@ export function BattleView({
                   {line}
                 </p>
               ))}
-            </div>
-          )}
-        </div>
-
-        {/* CENTER — Reference video */}
-        <div className="relative hidden md:flex flex-col items-center justify-center overflow-hidden bg-zinc-950 w-48 border-x border-zinc-800/50">
-          {celebration && isActive ? (
-            <>
-              <video
-                src={celebration.clipUrl}
-                className="h-full w-full object-contain"
-                autoPlay
-                muted
-                playsInline
-                ref={(el) => { if (el) el.dataset.plays = '1' }}
-                onEnded={(e) => {
-                  const v = e.currentTarget
-                  const plays = parseInt(v.dataset.plays ?? '1')
-                  if (plays < 3) {
-                    v.dataset.plays = String(plays + 1)
-                    v.currentTime = 0
-                    v.play()
-                  }
-                }}
-              />
-              <div className="absolute top-14 inset-x-0 text-center">
-                <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400">
-                  Reference
-                </span>
-              </div>
-            </>
-          ) : phase === 'judging' ? (
-            <div className="text-center space-y-4 p-4">
-              <div className="mx-auto h-10 w-10 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
-                Judging
-              </p>
-            </div>
-          ) : (
-            <div className="text-center px-4">
-              {phase === 'waiting' && (
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 animate-pulse">
-                  Waiting...
-                </p>
-              )}
             </div>
           )}
         </div>
@@ -222,7 +186,7 @@ export function BattleView({
           {/* Opponent label */}
           <div className="absolute top-14 left-3 flex items-center gap-2">
             <div className="h-2.5 w-2.5 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-xs font-black uppercase tracking-[0.2em] text-red-400 drop-shadow-lg">Opponent</span>
+            <span className="text-xs font-black uppercase tracking-[0.2em] text-red-400 drop-shadow-lg">{opponentName ?? 'Opponent'}</span>
           </div>
 
           {/* Opponent live score — BIG */}
@@ -240,20 +204,47 @@ export function BattleView({
           )}
         </div>
 
-        {/* Countdown overlay — study phase: banner only so reference video stays visible */}
-        {showCountdownOverlay && countdownValue !== null && countdownValue < 0 && (
-          <div className="absolute inset-x-0 top-0 z-10 flex flex-col items-center pt-20 pointer-events-none">
-            <p className="text-5xl md:text-7xl font-black uppercase tracking-tight text-amber-400 animate-pulse drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]">
-              {countdownLabel ?? 'Get Ready'}
+        {/* Small floating reference during performance */}
+        {phase === 'performing' && celebration && (
+          <div className="absolute top-14 left-1/2 -translate-x-1/2 z-20 w-64 md:w-80 lg:w-96 rounded-xl overflow-hidden border-2 border-amber-400/40 shadow-[0_0_30px_rgba(251,191,36,0.3)] bg-black">
+            <video
+              src={celebration.clipUrl}
+              className="w-full aspect-video object-contain"
+              autoPlay
+              muted
+              playsInline
+              loop
+            />
+            <p className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-400 text-center py-1 bg-black/80">
+              Reference
             </p>
-            {celebration && (
-              <p className="mt-4 text-2xl font-black uppercase tracking-wider text-white">
+          </div>
+        )}
+
+        {/* Study phase — full-screen popup with reference video */}
+        {showCountdownOverlay && countdownValue !== null && countdownValue < 0 && celebration && (
+          <div className="absolute inset-0 z-30 grid place-items-center bg-black/90 backdrop-blur-lg">
+            <div className="flex flex-col items-center gap-6 max-w-2xl w-full px-4">
+              <p className="text-4xl md:text-6xl font-black uppercase tracking-tight text-amber-400 animate-pulse drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]">
+                {countdownLabel ?? 'Get Ready'}
+              </p>
+              <p className="text-2xl md:text-3xl font-black uppercase tracking-wider text-white">
                 {celebration.name}
               </p>
-            )}
-            <p className="mt-3 text-sm uppercase tracking-[0.3em] text-zinc-400 font-bold">
-              Study the reference
-            </p>
+              <div className="w-full aspect-video rounded-2xl overflow-hidden border-2 border-amber-400/40 shadow-[0_0_60px_rgba(251,191,36,0.3)]">
+                <video
+                  src={celebration.clipUrl}
+                  className="h-full w-full object-contain bg-black"
+                  autoPlay
+                  muted
+                  playsInline
+                  loop
+                />
+              </div>
+              <p className="text-sm uppercase tracking-[0.4em] text-amber-300 font-bold animate-pulse">
+                Study this move
+              </p>
+            </div>
           </div>
         )}
 
@@ -277,6 +268,45 @@ export function BattleView({
                   )}
                 </>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Mogging indicator bar */}
+        {phase === 'performing' && myLiveScore !== null && oppLiveScore !== null && (
+          <div className="absolute bottom-0 inset-x-0 z-20 px-0">
+            <div className="flex items-center gap-2 px-4 py-2 bg-black/80 backdrop-blur-sm">
+              <span className={`text-xs font-black uppercase tracking-wider ${winning === 'me' ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                You
+              </span>
+              <div className="flex-1 h-3 rounded-full bg-zinc-800 overflow-hidden relative">
+                <div
+                  className="absolute inset-y-0 left-0 rounded-full transition-all duration-700 ease-out"
+                  style={{
+                    width: `${mogPct}%`,
+                    background: mogPct > 50
+                      ? `linear-gradient(90deg, #065f46, #10b981)`
+                      : mogPct < 50
+                        ? `linear-gradient(90deg, #ef4444, #fca5a5)`
+                        : `linear-gradient(90deg, #52525b, #a1a1aa)`,
+                    boxShadow: mogPct > 55
+                      ? '0 0 12px rgba(16,185,129,0.6)'
+                      : mogPct < 45
+                        ? '0 0 12px rgba(239,68,68,0.6)'
+                        : 'none',
+                  }}
+                />
+              </div>
+              <span className={`text-xs font-black uppercase tracking-wider ${winning === 'opp' ? 'text-red-400' : 'text-zinc-500'}`}>
+                Opp
+              </span>
+            </div>
+            <div className="text-center pb-1 bg-black/80">
+              <span className={`text-[10px] font-black uppercase tracking-[0.4em] ${
+                winning === 'me' ? 'text-emerald-400' : winning === 'opp' ? 'text-red-400' : 'text-zinc-500'
+              }`}>
+                {winning === 'me' ? 'MOGGING →' : winning === 'opp' ? '← GETTING MOGGED' : 'EVEN'}
+              </span>
             </div>
           </div>
         )}

@@ -19,6 +19,7 @@ class PlayerConnection:
     player_id: str
     websocket: WebSocket
     room_id: str | None = None
+    name: str | None = None
 
 
 @dataclass(slots=True)

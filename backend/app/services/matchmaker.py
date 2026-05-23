@@ -35,10 +35,15 @@ class Matchmaker:
         self.waiting.append(player)
         await self._send(player, {"type": "waiting"})
 
-        if len(self.waiting) >= 2:
-            await self._create_room()
+        # Schedule match check after a brief delay so set_name arrives first
+        asyncio.create_task(self._try_match_after_delay())
 
         return player
+
+    async def _try_match_after_delay(self) -> None:
+        await asyncio.sleep(0.5)
+        if len(self.waiting) >= 2:
+            await self._create_room()
 
     async def handle_message(self, player_id: str, message: dict) -> None:
         player = self.players.get(player_id)
@@ -46,6 +51,10 @@ class Matchmaker:
             return
 
         msg_type = message.get("type")
+
+        if msg_type == "set_name":
+            player.name = message.get("name", "")[:20]
+            return
 
         if msg_type == "frame" and player.room_id:
             room = self.rooms.get(player.room_id)
@@ -67,11 +76,16 @@ class Matchmaker:
                 room.celebration = pick_random_celebration()
                 room.frames = {p.player_id: [] for p in room.players}
                 room.phase = RoomPhase.MATCHED
-                await self.broadcast(room, {
-                    "type": "matched",
-                    "roomId": room.room_id,
-                    "celebration": room.celebration,
-                })
+                # Send per-player matched messages so each gets the opponent's name
+                for p in room.players:
+                    opp = next((o for o in room.players if o.player_id != p.player_id), None)
+                    await self._send(p, {
+                        "type": "matched",
+                        "roomId": room.room_id,
+                        "opponentId": opp.player_id if opp else None,
+                        "opponentName": opp.name if opp else None,
+                        "celebration": room.celebration,
+                    })
                 if self.start_game_callback:
                     asyncio.create_task(self.start_game_callback(room.room_id))
 
@@ -151,6 +165,7 @@ class Matchmaker:
             "roomId": room_id,
             "playerId": p1.player_id,
             "opponentId": p2.player_id,
+            "opponentName": p2.name,
             "celebration": celebration,
         })
         await self._send(p2, {
@@ -158,6 +173,7 @@ class Matchmaker:
             "roomId": room_id,
             "playerId": p2.player_id,
             "opponentId": p1.player_id,
+            "opponentName": p1.name,
             "celebration": celebration,
         })
 

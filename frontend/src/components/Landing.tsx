@@ -1,8 +1,12 @@
+import { useState } from 'react'
+
 type LandingProps = {
-  onEnter: () => void
+  onEnter: (name: string) => void
 }
 
 export function Landing({ onEnter }: LandingProps) {
+  const [name, setName] = useState('')
+
   return (
     <div className="min-h-screen bg-zinc-950 grid place-items-center relative overflow-hidden">
       {/* Animated gradient background */}
@@ -24,13 +28,25 @@ export function Landing({ onEnter }: LandingProps) {
           </p>
         </div>
 
-        <button
-          onClick={onEnter}
-          className="group relative rounded-xl bg-emerald-500 px-14 py-5 text-lg font-black uppercase tracking-widest text-black hover:bg-emerald-400 transition-all duration-300 shadow-[0_0_40px_rgba(52,211,153,0.4)] hover:shadow-[0_0_60px_rgba(52,211,153,0.6)] hover:scale-105"
-        >
-          Enter Arena
-          <span className="absolute -inset-1 rounded-xl bg-emerald-400/20 blur-lg group-hover:bg-emerald-400/30 transition-colors" />
-        </button>
+        <div className="space-y-4 max-w-xs mx-auto">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) onEnter(name.trim()) }}
+            placeholder="Enter your name..."
+            className="w-full rounded-xl bg-zinc-900 border border-zinc-700 px-6 py-4 text-center text-xl font-black text-white placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors"
+            autoFocus
+          />
+          <button
+            onClick={() => name.trim() && onEnter(name.trim())}
+            disabled={!name.trim()}
+            className="group relative w-full rounded-xl bg-emerald-500 px-14 py-5 text-lg font-black uppercase tracking-widest text-black hover:bg-emerald-400 transition-all duration-300 shadow-[0_0_40px_rgba(52,211,153,0.4)] hover:shadow-[0_0_60px_rgba(52,211,153,0.6)] hover:scale-105 disabled:opacity-40 disabled:hover:scale-100 disabled:hover:bg-emerald-500"
+          >
+            Enter Arena
+            <span className="absolute -inset-1 rounded-xl bg-emerald-400/20 blur-lg group-hover:bg-emerald-400/30 transition-colors" />
+          </button>
+        </div>
 
         <div className="flex items-center justify-center gap-8 text-[10px] uppercase tracking-widest text-zinc-600">
           <span>Gemini AI</span>
