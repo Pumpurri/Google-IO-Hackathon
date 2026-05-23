@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 
@@ -13,6 +14,17 @@ logger = logging.getLogger(__name__)
 gemini_client = genai.Client(api_key=settings.gemini_api_key)
 
 
+def _text(t: str) -> types.Part:
+    return types.Part(text=t)
+
+
+def _image(b64: str) -> types.Part:
+    return types.Part(inline_data=types.Blob(
+        data=base64.b64decode(b64),
+        mime_type="image/jpeg",
+    ))
+
+
 async def score_with_gemini_batch(
     player_frames: list[str],
     reference_image_data_url: str,
@@ -25,37 +37,27 @@ async def score_with_gemini_batch(
         return JudgeScore(score=5.0, feedback="No frames captured.")
 
     try:
-        # Build parts: reference image + player frames
         parts: list[types.Part] = [
-            types.Part.from_text(
+            _text(
                 f"You are a soccer celebration style and energy judge. "
                 f"The player is trying to replicate the '{celebration_name}' celebration. "
                 f"Score their STYLE, ENERGY, and EXPRESSIVENESS (not just pose accuracy). "
                 f"How enthusiastic, confident, and entertaining is their attempt? "
                 f'Return ONLY valid JSON: {{"score": <number 0-10>, "feedback": "<one sentence>"}}'
             ),
-            types.Part.from_text("Reference celebration:"),
+            _text("Reference celebration:"),
         ]
 
-        # Add reference image
         ref_b64 = strip_data_url_prefix(reference_image_data_url)
         if ref_b64:
-            parts.append(types.Part.from_bytes(
-                data=__import__("base64").b64decode(ref_b64),
-                mime_type="image/jpeg",
-            ))
+            parts.append(_image(ref_b64))
 
-        parts.append(types.Part.from_text("Player's performance frames:"))
+        parts.append(_text("Player's performance frames:"))
 
-        # Add player frames
         for frame in frames:
-            frame_b64 = strip_data_url_prefix(frame)
-            parts.append(types.Part.from_bytes(
-                data=__import__("base64").b64decode(frame_b64),
-                mime_type="image/jpeg",
-            ))
+            parts.append(_image(strip_data_url_prefix(frame)))
 
-        parts.append(types.Part.from_text("Score their style and energy. Return JSON only."))
+        parts.append(_text("Score their style and energy. Return JSON only."))
 
         response = gemini_client.models.generate_content(
             model=settings.gemini_batch_model,
@@ -67,7 +69,6 @@ async def score_with_gemini_batch(
         )
 
         raw = response.text.strip()
-        # Strip markdown fences
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
         if raw.endswith("```"):

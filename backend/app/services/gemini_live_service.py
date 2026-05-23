@@ -17,19 +17,23 @@ from app.utils.images import strip_data_url_prefix
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-You are a real-time celebration judge and sports commentator for WorldMog, a 1v1 battle game.
-Two players compete to replicate a famous soccer celebration. You can see their camera feeds.
+You are the HYPE commentator for WorldMog, a live 1v1 soccer celebration battle!
+Two players are competing to replicate a famous celebration. You see their camera feeds.
 
-You MUST follow this exact output format every time you speak. Say exactly two lines:
-SCORES: player1_id colon score, player2_id colon score
-Then give a short exciting commentary sentence.
+YOUR JOB: Never stop talking! You're a high-energy sports announcer calling a live match.
+Talk CONSTANTLY — react to every movement, every pose, every bit of energy you see.
+Be funny, dramatic, excited. Roast bad attempts. Hype good ones. Build tension!
 
-Example: "SCORES: P1A2B3 colon 6.5, P4C5D6 colon 7.0. Player two is absolutely nailing that pose!"
+IMPORTANT — you MUST include scores naturally in your commentary. Work them in like a sports announcer:
+"Player one is sitting at 6.5 right now, but player two just JUMPED to 8 with that incredible pose!"
+"I'm giving player one a 4... come on, you gotta bring more energy than THAT!"
 
-Scoring criteria: pose accuracy, energy, enthusiasm, style, confidence.
-Start scores around 3 to 4 and adjust gradually based on effort.
-Be an entertaining sports announcer — short, punchy, fun.
-Keep commentary to ONE sentence max. React to what you see in real time.
+Score criteria: pose accuracy, energy, enthusiasm, style, confidence.
+Start around 3-4, go up for effort and accuracy, down for standing still or being lazy.
+Scores are 0 to 10, use decimals like 6.5 or 7.2.
+
+ALWAYS mention BOTH player scores every few sentences so viewers can track who's winning.
+Never be silent! Fill every moment with commentary like you're calling the World Cup final!
 """
 
 
@@ -76,10 +80,11 @@ class GeminiLiveSession:
 
             # Send initial context as text
             setup_text = (
-                f"This is a 1v1 celebration battle. The celebration to replicate is: {self.celebration_name}. "
-                f"The two player IDs are: {self.player_ids[0]} and {self.player_ids[1]}. "
-                f"I will now stream their camera feeds. Judge them in real time. "
-                f"Remember to always say SCORES with both player IDs and their scores, then commentary."
+                f"THE BATTLE IS ON! The celebration they must replicate: {self.celebration_name}! "
+                f"Player one is {self.player_ids[0]}, player two is {self.player_ids[1]}. "
+                f"Camera feeds are coming in NOW. Start commentating immediately! "
+                f"Remember to mention scores for BOTH players by their IDs naturally in your commentary. "
+                f"Never stop talking! React to everything! GO GO GO!"
             )
             await self._session.send_client_content(
                 turns=types.Content(role="user", parts=[types.Part(text=setup_text)]),
@@ -111,7 +116,7 @@ class GeminiLiveSession:
             return
 
         now = time.monotonic()
-        if now - self._last_frame_time.get(player_id, 0) < 1.5:
+        if now - self._last_frame_time.get(player_id, 0) < 0.5:
             return
         self._last_frame_time[player_id] = now
 
@@ -168,18 +173,28 @@ class GeminiLiveSession:
             self._active = False
 
     async def _parse_and_broadcast(self, text: str) -> None:
-        # Try to extract scores: look for patterns like "P1A2B3 colon 6.5" or "P1A2B3: 6.5"
+        # Extract scores from natural speech — look for player IDs near numbers
+        # Handles: "player one P1A2B3 is at 6.5" / "P1A2B3 a 6.5" / "P1A2B3... 6.5" etc.
         scores: dict[str, float] = {}
         for pid in self.player_ids:
-            # Match "PLAYERID colon X.X" or "PLAYERID: X.X" or "PLAYERID X.X"
-            pattern = rf'{re.escape(pid)}\s*(?:colon|:)?\s*(\d+(?:\.\d+)?)'
-            match = re.search(pattern, text, re.IGNORECASE)
-            if match:
-                try:
-                    score = min(10.0, max(0.0, float(match.group(1))))
-                    scores[pid] = round(score, 1)
-                except ValueError:
-                    pass
+            # Look for player ID anywhere near a number (within ~30 chars)
+            # Patterns: "PID is at 6.5", "PID a 6.5", "PID: 6.5", "PID colon 6.5",
+            #           "PID sitting at 6.5", "PID to a 7", "giving PID a 6.5"
+            patterns = [
+                rf'{re.escape(pid)}\s*(?:is\s+)?(?:at\s+|a\s+|colon\s*|:\s*|,?\s+)(\d+(?:\.\d+)?)',
+                rf'(?:giving|give)\s+{re.escape(pid)}\s+(?:a\s+)?(\d+(?:\.\d+)?)',
+                rf'{re.escape(pid)}[^0-9]{{0,30}}?(\d+(?:\.\d+)?)',
+            ]
+            for pattern in patterns:
+                match = re.search(pattern, text, re.IGNORECASE)
+                if match:
+                    try:
+                        score = min(10.0, max(0.0, float(match.group(1))))
+                        if score > 0:
+                            scores[pid] = round(score, 1)
+                            break
+                    except ValueError:
+                        pass
 
         if len(scores) == 2:
             await self._broadcast(self.room_id, {
@@ -187,19 +202,11 @@ class GeminiLiveSession:
                 "scores": scores,
             })
 
-        # Extract commentary — anything after the scores line, or the whole text if no scores
-        commentary = text
-        # Remove the SCORES portion if present
-        commentary = re.sub(r'SCORES?\s*:?.*?(?:\d+(?:\.\d+)?)\s*[,.]?\s*', '', commentary, count=1)
-        commentary = commentary.strip().strip('.')
-        if not commentary:
-            commentary = text
-
-        # Only broadcast if it's meaningful (not just score numbers)
-        if commentary and len(commentary) > 5:
+        # Broadcast ALL text as commentary — this IS the live announcer
+        if text and len(text) > 3:
             await self._broadcast(self.room_id, {
                 "type": "commentary",
-                "text": commentary,
+                "text": text,
             })
 
     async def stop(self) -> None:

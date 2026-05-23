@@ -8,88 +8,126 @@ type ResultsModalProps = {
   onNewMatch: () => void
 }
 
+const WIN_WORDS = ['CELEBRATED', 'DOMINATED', 'DESTROYED', 'CRUSHED']
+const LOSE_WORDS = ['MOGGED', 'BRUTALIZED', 'OUTPLAYED', 'DEMOLISHED']
+
+function pickRandom(arr: string[]) {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
 export function ResultsModal({ myPlayerId, winnerId, scores, onRematch, onNewMatch }: ResultsModalProps) {
   const opponentId = Object.keys(scores).find((id) => id !== myPlayerId)
   const iWon = winnerId === myPlayerId
   const myScores = scores[myPlayerId]
   const oppScores = opponentId ? scores[opponentId] : null
 
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 backdrop-blur-sm p-4">
-      <section className="w-full max-w-lg rounded-xl border border-emerald-400/30 bg-zinc-950 p-8 text-center shadow-2xl shadow-emerald-400/10">
-        {/* Verdict */}
-        <h2 className={`text-5xl font-black uppercase tracking-tight ${iWon ? 'text-emerald-400' : 'text-white'}`}>
-          {iWon ? 'Celebrated!' : 'Outplayed!'}
-        </h2>
-        <p className="mt-2 text-sm uppercase tracking-widest text-zinc-400">
-          {iWon
-            ? `${opponentId ?? 'Opponent'} couldn't compete`
-            : 'Better luck next time'}
-        </p>
+  const verdict = iWon ? pickRandom(WIN_WORDS) : pickRandom(LOSE_WORDS)
+  const subtitle = iWon
+    ? `${opponentId ?? 'Opponent'} couldn't compete`
+    : `by ${opponentId ?? 'Opponent'}`
 
-        {/* Score comparison */}
-        <div className="mt-8 grid grid-cols-2 gap-4">
-          <ScoreCard
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="w-full max-w-2xl text-center space-y-8">
+        {/* Giant verdict text */}
+        <div>
+          <h2
+            className={`text-[5rem] md:text-[7rem] font-black uppercase leading-none tracking-tighter ${
+              iWon
+                ? 'text-emerald-400 drop-shadow-[0_0_40px_rgba(52,211,153,0.5)]'
+                : 'text-red-500 drop-shadow-[0_0_40px_rgba(239,68,68,0.5)]'
+            }`}
+          >
+            {verdict}
+          </h2>
+          <p className="mt-2 text-sm uppercase tracking-[0.3em] text-zinc-400 font-semibold">
+            {subtitle}
+          </p>
+        </div>
+
+        {/* Score comparison — big numbers side by side */}
+        <div className="flex items-center justify-center gap-6">
+          <ScoreBlock
             label="You"
             score={myScores}
-            highlight={iWon}
+            isWinner={iWon}
+            isLoser={!iWon}
           />
+          <span className="text-3xl font-black text-zinc-600">vs</span>
           {oppScores && (
-            <ScoreCard
+            <ScoreBlock
               label="Opponent"
               score={oppScores}
-              highlight={!iWon}
+              isWinner={!iWon}
+              isLoser={iWon}
             />
           )}
         </div>
 
         {/* Actions */}
-        <div className="mt-8 flex gap-3">
+        <div className="flex gap-3 max-w-md mx-auto">
           <button
             onClick={onRematch}
-            className="flex-1 rounded-lg bg-emerald-400 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-zinc-950 hover:bg-emerald-300 transition-colors shadow-lg shadow-emerald-400/20"
+            className="flex-1 rounded-lg bg-emerald-500 px-6 py-4 text-sm font-black uppercase tracking-wider text-black hover:bg-emerald-400 transition-colors shadow-lg shadow-emerald-500/30"
           >
             Rematch
           </button>
           <button
             onClick={onNewMatch}
-            className="flex-1 rounded-lg border border-zinc-700 px-6 py-3.5 text-sm font-bold uppercase tracking-wider text-zinc-300 hover:bg-zinc-800 transition-colors"
+            className="flex-1 rounded-lg border border-zinc-600 px-6 py-4 text-sm font-black uppercase tracking-wider text-zinc-300 hover:bg-zinc-800 transition-colors"
           >
             New Match
           </button>
         </div>
-      </section>
+      </div>
     </div>
   )
 }
 
-function ScoreCard({ label, score, highlight }: { label: string; score: PlayerScore; highlight: boolean }) {
+function ScoreBlock({ label, score, isWinner, isLoser }: {
+  label: string
+  score: PlayerScore
+  isWinner: boolean
+  isLoser: boolean
+}) {
+  const bgColor = isLoser
+    ? 'bg-red-500/20 border-red-500/40'
+    : isWinner
+      ? 'bg-emerald-500/20 border-emerald-500/40'
+      : 'bg-zinc-900/80 border-zinc-700'
+
+  const scoreColor = isLoser
+    ? 'text-red-400'
+    : isWinner
+      ? 'text-emerald-400'
+      : 'text-white'
+
   return (
-    <div className={`rounded-lg p-4 space-y-3 ${highlight ? 'bg-emerald-400/10 border border-emerald-400/30' : 'bg-zinc-900 border border-zinc-800'}`}>
-      <p className="text-xs uppercase tracking-wider text-zinc-400">{label}</p>
-      <p className="text-4xl font-black text-white tabular-nums">
+    <div className={`rounded-xl p-6 border backdrop-blur-sm space-y-3 min-w-[180px] ${bgColor}`}>
+      <p className="text-xs uppercase tracking-[0.2em] text-zinc-400 font-bold">{label}</p>
+      <p className={`text-6xl font-black tabular-nums ${scoreColor}`}>
         {score.final.toFixed(1)}
       </p>
-
-      {/* Judge breakdown */}
-      <div className="space-y-1.5 pt-2 border-t border-zinc-800">
-        <JudgeLine label="Accuracy" score={score.gmi.score} feedback={score.gmi.feedback} />
-        <JudgeLine label="Style" score={score.gemini.score} feedback={score.gemini.feedback} />
+      <div className="space-y-2 pt-3 border-t border-zinc-700/50">
+        <JudgeLine label="Accuracy (GMI)" value={score.gmi.score} feedback={score.gmi.feedback} />
+        <JudgeLine label="Style (Gemini)" value={score.gemini.score} feedback={score.gemini.feedback} />
       </div>
     </div>
   )
 }
 
-function JudgeLine({ label, score, feedback }: { label: string; score: number; feedback: string }) {
+function JudgeLine({ label, value, feedback }: { label: string; value: number; feedback: string }) {
   return (
-    <div className="text-left">
+    <div className="space-y-0.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] uppercase tracking-wider text-zinc-500">{label}</span>
-        <span className="text-xs font-bold text-zinc-300 tabular-nums">{score.toFixed(1)}</span>
+        <span className="text-xs font-bold text-zinc-300 tabular-nums">{value.toFixed(1)}</span>
       </div>
-      <p className="text-[10px] text-zinc-500 leading-tight truncate" title={feedback}>
-        {feedback}
-      </p>
+      {feedback && feedback !== 'Mock score' && (
+        <p className="text-[11px] leading-snug text-zinc-400 italic">
+          &ldquo;{feedback}&rdquo;
+        </p>
+      )}
     </div>
   )
 }

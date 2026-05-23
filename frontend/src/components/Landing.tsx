@@ -5,33 +5,39 @@ type LandingProps = {
 export function Landing({ onEnter }: LandingProps) {
   return (
     <div className="min-h-screen bg-zinc-950 grid place-items-center relative overflow-hidden">
-      {/* Radial glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(52,211,153,0.08)_0%,_transparent_70%)]" />
+      {/* Animated gradient background */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(52,211,153,0.12)_0%,_transparent_50%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(239,68,68,0.08)_0%,_transparent_50%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_rgba(251,191,36,0.06)_0%,_transparent_50%)]" />
 
-      <div className="relative text-center space-y-10">
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-400">
+      <div className="relative text-center space-y-12 px-6">
+        <div className="space-y-4">
+          <p className="text-xs font-bold uppercase tracking-[0.5em] text-emerald-400 animate-pulse">
             Live 1v1 Celebration Arena
           </p>
-          <h1 className="text-8xl font-black tracking-tighter text-white">
+          <h1 className="text-[6rem] md:text-[10rem] font-black tracking-tighter text-white leading-none drop-shadow-[0_0_60px_rgba(52,211,153,0.3)]">
             WORLDMOG
           </h1>
-          <p className="text-sm text-zinc-500 max-w-sm mx-auto">
+          <p className="text-lg text-zinc-400 max-w-md mx-auto font-medium">
             Replicate iconic soccer celebrations. AI judges who nailed it.
+            <span className="text-emerald-400"> Get mogged or mog others.</span>
           </p>
         </div>
 
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-8 space-y-5">
-          <p className="text-sm uppercase tracking-widest text-zinc-400 font-semibold">
-            Enter the Arena
-          </p>
-          <button
-            onClick={onEnter}
-            className="rounded-lg bg-emerald-400 px-10 py-3.5 text-sm font-bold uppercase tracking-wider text-zinc-950 hover:bg-emerald-300 transition-colors shadow-lg shadow-emerald-400/20"
-          >
-            Start Camera
-          </button>
-          <p className="text-xs text-zinc-600">Camera required to play</p>
+        <button
+          onClick={onEnter}
+          className="group relative rounded-xl bg-emerald-500 px-14 py-5 text-lg font-black uppercase tracking-widest text-black hover:bg-emerald-400 transition-all duration-300 shadow-[0_0_40px_rgba(52,211,153,0.4)] hover:shadow-[0_0_60px_rgba(52,211,153,0.6)] hover:scale-105"
+        >
+          Enter Arena
+          <span className="absolute -inset-1 rounded-xl bg-emerald-400/20 blur-lg group-hover:bg-emerald-400/30 transition-colors" />
+        </button>
+
+        <div className="flex items-center justify-center gap-8 text-[10px] uppercase tracking-widest text-zinc-600">
+          <span>Gemini AI</span>
+          <span className="h-3 w-px bg-zinc-800" />
+          <span>GMI Cloud</span>
+          <span className="h-3 w-px bg-zinc-800" />
+          <span>RocketRide</span>
         </div>
       </div>
     </div>
