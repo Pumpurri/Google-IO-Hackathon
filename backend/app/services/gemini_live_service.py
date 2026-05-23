@@ -62,6 +62,7 @@ class GeminiLiveSession:
         self._active = False
         self._frame_queue: asyncio.Queue = asyncio.Queue()
         self._last_frame_time: dict[str, float] = {pid: 0.0 for pid in player_ids}
+        self._running_scores: dict[str, float] = {pid: 3.0 for pid in player_ids}
 
     async def start(self, reference_image_b64: str) -> None:
         try:
@@ -213,10 +214,11 @@ class GeminiLiveSession:
                 if found:
                     break
 
-        if len(scores) == 2:
+        if scores:
+            self._running_scores.update(scores)
             await self._broadcast(self.room_id, {
                 "type": "live_scores",
-                "scores": scores,
+                "scores": dict(self._running_scores),
             })
 
         # Broadcast ALL text as commentary — this IS the live announcer

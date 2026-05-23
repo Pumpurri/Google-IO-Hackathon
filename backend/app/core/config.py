@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     gmi_api_key: str = ""
     gmi_vision_model: str = "openai/gpt-4o"
     gemini_batch_model: str = "gemini-2.5-flash"
-    gemini_live_model: str = "gemini-2.0-flash-live-001"
+    gemini_live_model: str = "gemini-live-2.5-flash-native-audio"
     scoring_backend: str = "direct"  # "direct" or "rocketride"
     allowed_origins: list[str] = ["http://localhost:5173"]
 
