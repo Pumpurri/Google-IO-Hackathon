@@ -117,6 +117,12 @@ class GeminiLiveSession:
                         )
                     )
 
+            # Broadcast initial scores so UI shows them immediately
+            await self._broadcast(self.room_id, {
+                "type": "live_scores",
+                "scores": dict(self._running_scores),
+            })
+
             # Start background tasks
             self._tasks.append(asyncio.create_task(self._send_frames_loop()))
             self._tasks.append(asyncio.create_task(self._receive_loop()))

@@ -43,7 +43,7 @@ async def _run_room_game_inner(room_id: str, matchmaker, score_fn=None) -> None:
 
     # Performance window
     room.phase = RoomPhase.PERFORMING
-    await matchmaker.broadcast(room, {"type": "perform", "durationSeconds": 15})
+    await matchmaker.broadcast(room, {"type": "perform", "durationSeconds": 25})
 
     # Start Gemini Live for real-time scoring
     try:
@@ -65,9 +65,14 @@ async def _run_room_game_inner(room_id: str, matchmaker, score_fn=None) -> None:
             broadcast_cb=broadcast_live,
         )
     except Exception:
-        logger.exception("Gemini Live start failed for room %s — continuing without live scores", room_id)
+        logger.exception("Gemini Live start failed for room %s — using fallback scores", room_id)
+        # Send fallback initial scores so UI still shows something
+        await matchmaker.broadcast(room, {
+            "type": "live_scores",
+            "scores": {p.player_id: 3.0 for p in room.players},
+        })
 
-    await asyncio.sleep(15)
+    await asyncio.sleep(25)
 
     # Stop live commentary — timeout to prevent blocking if WebSocket hangs
     try:
