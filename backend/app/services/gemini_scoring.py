@@ -62,7 +62,7 @@ async def score_with_gemini_batch(
             contents=types.Content(parts=parts, role="user"),
             config=types.GenerateContentConfig(
                 temperature=0.3,
-                max_output_tokens=200,
+                max_output_tokens=2048,
             ),
         )
 

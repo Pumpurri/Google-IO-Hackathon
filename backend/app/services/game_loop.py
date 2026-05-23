@@ -19,10 +19,17 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
     if not room:
         return
 
-    # Countdown
+    # Get Ready — let players study the celebration
     room.phase = RoomPhase.COUNTDOWN
-    await matchmaker.broadcast(room, {"type": "countdown", "seconds": 3})
-    await asyncio.sleep(3)
+    await matchmaker.broadcast(room, {"type": "countdown", "seconds": -1, "label": "STUDY THE MOVE"})
+    await asyncio.sleep(4)
+
+    # Countdown ticks from server
+    for n in range(5, 0, -1):
+        await matchmaker.broadcast(room, {"type": "countdown", "seconds": n})
+        await asyncio.sleep(1)
+    await matchmaker.broadcast(room, {"type": "countdown", "seconds": 0, "label": "GO!"})
+    await asyncio.sleep(0.6)
 
     # Performance window
     room.phase = RoomPhase.PERFORMING
@@ -57,11 +64,15 @@ async def run_room_game(room_id: str, matchmaker, score_fn=None) -> None:
     except Exception:
         logger.warning("Gemini Live stop failed for room %s", room_id)
 
-    # Judging
+    # Dramatic judging sequence
     room.phase = RoomPhase.JUDGING
-    await matchmaker.broadcast(room, {"type": "judging"})
+    await matchmaker.broadcast(room, {"type": "judging", "stage": "analyzing"})
+    await asyncio.sleep(1.5)
+    await matchmaker.broadcast(room, {"type": "judging", "stage": "comparing"})
+    await asyncio.sleep(1.5)
+    await matchmaker.broadcast(room, {"type": "judging", "stage": "deliberating"})
 
-    # Score
+    # Score (runs during the deliberating stage)
     if score_fn:
         try:
             result = await score_fn(room)

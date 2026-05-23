@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { GamePhase, Celebration, PlayerScore, ServerMessage, ClientMessage } from '../types/messages'
+import { useCommentaryAudio } from './useCommentaryAudio'
 
 type GameState = {
   phase: GamePhase
@@ -8,9 +9,12 @@ type GameState = {
   roomId: string | null
   celebration: Celebration | null
   countdownValue: number | null
+  countdownLabel: string | null
   timerValue: number | null
   commentary: string[]
   liveScores: Record<string, number> | null
+  opponentFrame: string | null
+  judgingStage: string | null
   winnerId: string | null
   scores: Record<string, PlayerScore> | null
 }
@@ -22,9 +26,12 @@ const INITIAL_STATE: GameState = {
   roomId: null,
   celebration: null,
   countdownValue: null,
+  countdownLabel: null,
   timerValue: null,
   commentary: [],
   liveScores: null,
+  opponentFrame: null,
+  judgingStage: null,
   winnerId: null,
   scores: null,
 }
@@ -33,6 +40,7 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
   const wsRef = useRef<WebSocket | null>(null)
   const [state, setState] = useState<GameState>(INITIAL_STATE)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const { playChunk } = useCommentaryAudio()
 
   useEffect(() => {
     if (!enabled) return
@@ -61,24 +69,19 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             celebration: msg.celebration,
             commentary: [],
             liveScores: null,
+            opponentFrame: null,
             winnerId: null,
             scores: null,
           }))
           break
 
         case 'countdown':
-          setState((s) => ({ ...s, phase: 'countdown', countdownValue: msg.seconds }))
-          // Client-side countdown display
-          let val = msg.seconds
-          const cdInterval = setInterval(() => {
-            val--
-            if (val <= 0) {
-              clearInterval(cdInterval)
-              setState((s) => ({ ...s, countdownValue: 0 }))
-            } else {
-              setState((s) => ({ ...s, countdownValue: val }))
-            }
-          }, 1000)
+          setState((s) => ({
+            ...s,
+            phase: 'countdown',
+            countdownValue: msg.seconds,
+            countdownLabel: msg.label ?? null,
+          }))
           break
 
         case 'perform':
@@ -104,9 +107,17 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
           setState((s) => ({ ...s, liveScores: msg.scores }))
           break
 
+        case 'commentary_audio':
+          playChunk(msg.data)
+          break
+
+        case 'opponent_frame':
+          setState((s) => ({ ...s, opponentFrame: msg.frame }))
+          break
+
         case 'judging':
           if (timerRef.current) clearInterval(timerRef.current)
-          setState((s) => ({ ...s, phase: 'judging', timerValue: null }))
+          setState((s) => ({ ...s, phase: 'judging', timerValue: null, judgingStage: msg.stage ?? 'analyzing' }))
           break
 
         case 'results':
@@ -130,6 +141,7 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             timerValue: null,
             commentary: [],
             liveScores: null,
+            opponentFrame: null,
           }))
           break
 

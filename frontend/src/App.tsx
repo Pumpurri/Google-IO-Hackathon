@@ -17,8 +17,9 @@ export default function App() {
   const game = useGameSocket(WS_URL, connected)
 
   const isPerforming = game.phase === 'performing'
+  const showSkeleton = game.phase === 'countdown' || isPerforming
 
-  usePoseOverlay({ enabled: isPerforming, videoRef, canvasRef })
+  usePoseOverlay({ enabled: showSkeleton, videoRef, canvasRef })
   useFrameCapture({ enabled: isPerforming, videoRef, send: game.send })
 
   async function handleEnter() {
@@ -37,6 +38,7 @@ export default function App() {
         canvasRef={canvasRef}
         phase={game.phase}
         countdownValue={game.countdownValue}
+        countdownLabel={game.countdownLabel}
         timerValue={game.timerValue}
         celebration={game.celebration}
         commentary={game.commentary}
@@ -45,6 +47,8 @@ export default function App() {
         }
         liveScores={game.liveScores}
         playerId={game.playerId}
+        opponentFrame={game.opponentFrame}
+        judgingStage={game.judgingStage}
       />
       {game.phase === 'results' && game.playerId && game.winnerId && game.scores && (
         <ResultsModal

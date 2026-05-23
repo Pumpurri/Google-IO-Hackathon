@@ -29,11 +29,13 @@ export type ServerMessage =
   | { type: 'welcome'; playerId: string }
   | { type: 'waiting' }
   | { type: 'matched'; roomId: string; playerId: string; opponentId: string; celebration: Celebration }
-  | { type: 'countdown'; seconds: number }
+  | { type: 'countdown'; seconds: number; label?: string }
   | { type: 'perform'; durationSeconds: number }
   | { type: 'commentary'; text: string }
+  | { type: 'commentary_audio'; data: string }
   | { type: 'live_scores'; scores: Record<string, number> }
-  | { type: 'judging' }
+  | { type: 'opponent_frame'; frame: string }
+  | { type: 'judging'; stage?: string }
   | { type: 'results'; winnerId: string; scores: Record<string, PlayerScore> }
   | { type: 'opponent_disconnected' }
   | { type: 'error'; message: string }

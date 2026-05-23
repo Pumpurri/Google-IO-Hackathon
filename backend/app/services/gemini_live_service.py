@@ -4,6 +4,7 @@ import asyncio
 import base64
 import json
 import logging
+import re
 import time
 from collections.abc import Awaitable, Callable
 
@@ -16,23 +17,19 @@ from app.utils.images import strip_data_url_prefix
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = """\
-You are a real-time celebration judge for WorldMog, a 1v1 battle game.
-Two players compete to replicate a famous soccer celebration.
-You will receive frames from both players, labeled with their IDs.
+You are a real-time celebration judge and sports commentator for WorldMog, a 1v1 battle game.
+Two players compete to replicate a famous soccer celebration. You can see their camera feeds.
 
-After each frame, output EXACTLY two lines:
-SCORES: {"<player1_id>": <score 0.0-10.0>, "<player2_id>": <score 0.0-10.0>}
-COMMENTARY: <One short, exciting sentence>
+You MUST follow this exact output format every time you speak. Say exactly two lines:
+SCORES: player1_id colon score, player2_id colon score
+Then give a short exciting commentary sentence.
 
-Scoring criteria:
-- Pose accuracy compared to the reference celebration
-- Energy and enthusiasm
-- Style and confidence
+Example: "SCORES: P1A2B3 colon 6.5, P4C5D6 colon 7.0. Player two is absolutely nailing that pose!"
 
-Start scores around 3-4 and adjust based on effort. Scores should change
-gradually — small increments up or down based on what you see.
+Scoring criteria: pose accuracy, energy, enthusiasm, style, confidence.
+Start scores around 3 to 4 and adjust gradually based on effort.
 Be an entertaining sports announcer — short, punchy, fun.
-Examples: "Player A is NAILING that pose!", "More energy needed!", "What a battle!"
+Keep commentary to ONE sentence max. React to what you see in real time.
 """
 
 
@@ -48,10 +45,11 @@ class GeminiLiveSession:
         self.player_ids = player_ids
         self.celebration_name = celebration_name
         self._broadcast = broadcast_cb
-        self._ctx = None
         self._session = None
-        self._receive_task: asyncio.Task | None = None
+        self._ctx = None
+        self._tasks: list[asyncio.Task] = []
         self._active = False
+        self._frame_queue: asyncio.Queue = asyncio.Queue()
         self._last_frame_time: dict[str, float] = {pid: 0.0 for pid in player_ids}
 
     async def start(self, reference_image_b64: str) -> None:
@@ -59,11 +57,14 @@ class GeminiLiveSession:
             client = genai.Client(api_key=settings.gemini_api_key)
 
             config = types.LiveConnectConfig(
-                response_modalities=["TEXT"],
+                response_modalities=[types.Modality.AUDIO],
+                output_audio_transcription=types.AudioTranscriptionConfig(),
                 system_instruction=types.Content(
-                    parts=[types.Part.from_text(SYSTEM_PROMPT)],
+                    parts=[types.Part(text=SYSTEM_PROMPT)],
                 ),
-                temperature=0.7,
+                realtime_input_config=types.RealtimeInputConfig(
+                    turn_coverage="TURN_INCLUDES_ONLY_ACTIVITY",
+                ),
             )
 
             self._ctx = client.aio.live.connect(
@@ -73,34 +74,32 @@ class GeminiLiveSession:
             self._session = await self._ctx.__aenter__()
             self._active = True
 
-            # Send reference image and context as the first turn
-            parts: list[types.Part] = [
-                types.Part.from_text(
-                    f"Celebration battle: '{self.celebration_name}'. "
-                    f"Players: {self.player_ids[0]} vs {self.player_ids[1]}. "
-                    f"Reference image of the target celebration:"
-                ),
-            ]
-
-            if reference_image_b64:
-                raw = strip_data_url_prefix(reference_image_b64)
-                if raw:
-                    parts.append(types.Part.from_bytes(
-                        data=base64.b64decode(raw),
-                        mime_type="image/jpeg",
-                    ))
-
-            parts.append(types.Part.from_text(
-                "I will now send frames from each player. "
-                "Respond with SCORES and COMMENTARY after each frame."
-            ))
-
+            # Send initial context as text
+            setup_text = (
+                f"This is a 1v1 celebration battle. The celebration to replicate is: {self.celebration_name}. "
+                f"The two player IDs are: {self.player_ids[0]} and {self.player_ids[1]}. "
+                f"I will now stream their camera feeds. Judge them in real time. "
+                f"Remember to always say SCORES with both player IDs and their scores, then commentary."
+            )
             await self._session.send_client_content(
-                turns=types.Content(role="user", parts=parts),
+                turns=types.Content(role="user", parts=[types.Part(text=setup_text)]),
                 turn_complete=True,
             )
 
-            self._receive_task = asyncio.create_task(self._receive_loop())
+            # Send reference image if available
+            if reference_image_b64:
+                raw = strip_data_url_prefix(reference_image_b64)
+                if raw:
+                    await self._session.send_realtime_input(
+                        video=types.Blob(
+                            data=base64.b64decode(raw),
+                            mime_type="image/jpeg",
+                        )
+                    )
+
+            # Start background tasks
+            self._tasks.append(asyncio.create_task(self._send_frames_loop()))
+            self._tasks.append(asyncio.create_task(self._receive_loop()))
             logger.info("Gemini Live session started for room %s", self.room_id)
 
         except Exception:
@@ -108,7 +107,7 @@ class GeminiLiveSession:
             self._active = False
 
     async def send_frame(self, player_id: str, frame_b64: str) -> None:
-        if not self._active or not self._session:
+        if not self._active:
             return
 
         now = time.monotonic()
@@ -116,36 +115,50 @@ class GeminiLiveSession:
             return
         self._last_frame_time[player_id] = now
 
-        try:
-            raw = strip_data_url_prefix(frame_b64)
-            frame_bytes = base64.b64decode(raw)
+        await self._frame_queue.put(frame_b64)
 
-            await self._session.send_client_content(
-                turns=types.Content(
-                    role="user",
-                    parts=[
-                        types.Part.from_text(f"[Frame from {player_id}]"),
-                        types.Part.from_bytes(data=frame_bytes, mime_type="image/jpeg"),
-                    ],
-                ),
-                turn_complete=True,
-            )
-        except Exception:
-            logger.warning("Failed to send frame to Gemini Live for room %s", self.room_id)
+    async def _send_frames_loop(self) -> None:
+        try:
+            while self._active:
+                frame_b64 = await self._frame_queue.get()
+                if not self._active:
+                    break
+                try:
+                    raw = strip_data_url_prefix(frame_b64)
+                    frame_bytes = base64.b64decode(raw)
+                    await self._session.send_realtime_input(
+                        video=types.Blob(data=frame_bytes, mime_type="image/jpeg")
+                    )
+                except Exception:
+                    logger.warning("Failed to send frame to Gemini Live for room %s", self.room_id)
+        except asyncio.CancelledError:
+            pass
 
     async def _receive_loop(self) -> None:
         try:
-            buffer = ""
             async for msg in self._session.receive():
                 if not self._active:
                     break
 
-                if msg.text:
-                    buffer += msg.text
+                server_content = msg.server_content
+                if not server_content:
+                    continue
 
-                if msg.server_content and msg.server_content.turn_complete:
-                    await self._parse_and_broadcast(buffer)
-                    buffer = ""
+                # Forward audio chunks to players for live commentary voice
+                if server_content.model_turn:
+                    for part in server_content.model_turn.parts:
+                        if part.inline_data and part.inline_data.data:
+                            audio_b64 = base64.b64encode(part.inline_data.data).decode("ascii")
+                            await self._broadcast(self.room_id, {
+                                "type": "commentary_audio",
+                                "data": audio_b64,
+                            })
+
+                # Get text from output transcription (audio → text)
+                if server_content.output_transcription and server_content.output_transcription.text:
+                    text = server_content.output_transcription.text.strip()
+                    if text:
+                        await self._parse_and_broadcast(text)
 
         except asyncio.CancelledError:
             pass
@@ -155,36 +168,51 @@ class GeminiLiveSession:
             self._active = False
 
     async def _parse_and_broadcast(self, text: str) -> None:
-        for line in text.strip().split("\n"):
-            line = line.strip()
-
-            if line.startswith("SCORES:"):
+        # Try to extract scores: look for patterns like "P1A2B3 colon 6.5" or "P1A2B3: 6.5"
+        scores: dict[str, float] = {}
+        for pid in self.player_ids:
+            # Match "PLAYERID colon X.X" or "PLAYERID: X.X" or "PLAYERID X.X"
+            pattern = rf'{re.escape(pid)}\s*(?:colon|:)?\s*(\d+(?:\.\d+)?)'
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
                 try:
-                    scores = json.loads(line[len("SCORES:"):].strip())
-                    if isinstance(scores, dict):
-                        await self._broadcast(self.room_id, {
-                            "type": "live_scores",
-                            "scores": {k: round(float(v), 1) for k, v in scores.items()},
-                        })
-                except (json.JSONDecodeError, ValueError):
-                    logger.debug("Unparseable live scores: %s", line)
+                    score = min(10.0, max(0.0, float(match.group(1))))
+                    scores[pid] = round(score, 1)
+                except ValueError:
+                    pass
 
-            elif line.startswith("COMMENTARY:"):
-                comment = line[len("COMMENTARY:"):].strip()
-                if comment:
-                    await self._broadcast(self.room_id, {
-                        "type": "commentary",
-                        "text": comment,
-                    })
+        if len(scores) == 2:
+            await self._broadcast(self.room_id, {
+                "type": "live_scores",
+                "scores": scores,
+            })
+
+        # Extract commentary — anything after the scores line, or the whole text if no scores
+        commentary = text
+        # Remove the SCORES portion if present
+        commentary = re.sub(r'SCORES?\s*:?.*?(?:\d+(?:\.\d+)?)\s*[,.]?\s*', '', commentary, count=1)
+        commentary = commentary.strip().strip('.')
+        if not commentary:
+            commentary = text
+
+        # Only broadcast if it's meaningful (not just score numbers)
+        if commentary and len(commentary) > 5:
+            await self._broadcast(self.room_id, {
+                "type": "commentary",
+                "text": commentary,
+            })
 
     async def stop(self) -> None:
         self._active = False
-        if self._receive_task and not self._receive_task.done():
-            self._receive_task.cancel()
+        for task in self._tasks:
+            if not task.done():
+                task.cancel()
+        for task in self._tasks:
             try:
-                await self._receive_task
+                await task
             except asyncio.CancelledError:
                 pass
+        self._tasks.clear()
         if self._ctx:
             try:
                 await self._ctx.__aexit__(None, None, None)

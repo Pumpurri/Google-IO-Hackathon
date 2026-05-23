@@ -54,6 +54,12 @@ class Matchmaker:
                 asyncio.create_task(
                     forward_frame(room.room_id, player_id, message["frame"])
                 )
+                # Relay frame to opponent
+                for p in room.players:
+                    if p.player_id != player_id:
+                        asyncio.create_task(
+                            self._send(p, {"type": "opponent_frame", "frame": message["frame"]})
+                        )
 
         elif msg_type == "rematch" and player.room_id:
             room = self.rooms.get(player.room_id)
