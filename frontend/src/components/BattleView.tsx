@@ -22,41 +22,64 @@ export function BattleView({
   commentary,
   myScore,
 }: BattleViewProps) {
-  const statusText = {
+  const opponentStatus = {
     waiting: 'Waiting for opponent...',
-    matched: 'Opponent found!',
-    countdown: '',
-    performing: 'Celebrating...',
-    judging: 'Judging...',
+    matched: 'Opponent found! Get ready...',
+    countdown: 'Get ready...',
+    performing: 'Performing...',
+    judging: 'Analyzing performances...',
     results: '',
     landing: '',
   }[phase]
 
+  const showCountdownOverlay = phase === 'countdown' && countdownValue !== null
+
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       {/* Top bar: celebration reference + timer */}
-      <div className="flex items-center justify-center gap-4 p-3 bg-zinc-900/80 border-b border-zinc-800">
-        {celebration && (
-          <span className="text-sm font-bold uppercase tracking-wider text-emerald-400">
-            {celebration.name}
-          </span>
-        )}
-        {countdownValue !== null && (
-          <span className="text-4xl font-black text-white tabular-nums">
-            {countdownValue === 0 ? 'GO!' : countdownValue}
-          </span>
-        )}
-        {timerValue !== null && (
-          <span className="text-2xl font-bold text-white tabular-nums">
-            00:{String(timerValue).padStart(2, '0')}
-          </span>
-        )}
+      <div className="flex items-center justify-between px-4 py-3 bg-zinc-900/80 border-b border-zinc-800">
+        <div className="flex items-center gap-3">
+          {celebration && (
+            <>
+              <video
+                src={celebration.clipUrl}
+                className="h-10 w-10 rounded border border-zinc-700 object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <div>
+                <p className="text-xs text-zinc-500 uppercase tracking-wider">Replicate</p>
+                <p className="text-sm font-bold uppercase tracking-wider text-emerald-400">
+                  {celebration.name}
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          {timerValue !== null && (
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-2xl font-black text-white tabular-nums">
+                00:{String(timerValue).padStart(2, '0')}
+              </span>
+            </div>
+          )}
+          {phase === 'judging' && (
+            <span className="text-sm font-semibold uppercase tracking-wider text-amber-400 animate-pulse">
+              Judging...
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Split screen */}
-      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-1 p-1">
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-1 p-1 relative">
         {/* Local player */}
-        <div className="relative overflow-hidden rounded-lg border border-emerald-400/30 bg-black">
+        <div className="relative overflow-hidden rounded-lg border border-emerald-400/30 bg-black aspect-video md:aspect-auto">
           <video
             ref={videoRef}
             className="h-full w-full object-cover"
@@ -72,15 +95,16 @@ export function BattleView({
             You
           </span>
           {myScore !== null && (
-            <div className="absolute top-2 right-2 rounded bg-zinc-900/90 px-3 py-1">
-              <span className="text-lg font-black text-white">{myScore.toFixed(1)}</span>
+            <div className="absolute top-2 right-2 rounded-lg bg-zinc-900/90 px-3 py-1.5 border border-emerald-400/20">
+              <p className="text-xs text-zinc-500 uppercase">Score</p>
+              <p className="text-xl font-black text-white tabular-nums">{myScore.toFixed(1)}</p>
             </div>
           )}
           {/* Commentary callouts */}
           {commentary.length > 0 && (
             <div className="absolute bottom-2 left-2 right-2 space-y-1">
               {commentary.slice(-2).map((line, i) => (
-                <p key={i} className="rounded bg-black/70 px-2 py-1 text-xs text-emerald-300">
+                <p key={i} className="rounded bg-black/70 px-2 py-1 text-xs text-emerald-300 backdrop-blur-sm">
                   {line}
                 </p>
               ))}
@@ -88,12 +112,51 @@ export function BattleView({
           )}
         </div>
 
-        {/* Opponent */}
-        <div className="relative grid place-items-center overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900">
-          <p className="text-sm font-semibold uppercase tracking-widest text-zinc-500">
-            {statusText}
-          </p>
+        {/* Right panel: reference clip or status */}
+        <div className="relative grid place-items-center overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900 aspect-video md:aspect-auto">
+          {celebration && (phase === 'matched' || phase === 'countdown' || phase === 'performing') ? (
+            <>
+              <video
+                src={celebration.clipUrl}
+                className="h-full w-full object-contain"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <span className="absolute top-2 left-2 rounded bg-zinc-900/80 px-2 py-1 text-xs font-semibold uppercase tracking-wider text-amber-400">
+                Reference
+              </span>
+            </>
+          ) : phase === 'judging' ? (
+            <div className="text-center space-y-3">
+              <div className="mx-auto h-8 w-8 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin" />
+              <p className="text-sm font-semibold uppercase tracking-widest text-zinc-400">
+                AI Judges Scoring
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm font-semibold uppercase tracking-widest text-zinc-500">
+              {opponentStatus}
+            </p>
+          )}
         </div>
+
+        {/* Countdown overlay */}
+        {showCountdownOverlay && (
+          <div className="absolute inset-0 z-10 grid place-items-center bg-black/60 backdrop-blur-sm">
+            <div className="text-center">
+              <p className="text-9xl font-black text-white animate-bounce">
+                {countdownValue === 0 ? 'GO!' : countdownValue}
+              </p>
+              {celebration && (
+                <p className="mt-4 text-lg font-bold uppercase tracking-wider text-emerald-400">
+                  {celebration.name}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

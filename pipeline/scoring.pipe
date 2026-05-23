@@ -1,0 +1,53 @@
+{
+	"components": [
+		{
+			"id": "chat_1",
+			"provider": "chat",
+			"config": {
+				"hideForm": true,
+				"mode": "Source",
+				"parameters": {},
+				"type": "chat"
+			},
+			"ui": {
+				"position": { "x": 20, "y": 200 },
+				"measured": { "width": 150, "height": 66 }
+			}
+		},
+		{
+			"id": "llm_gemini_1",
+			"provider": "llm_gemini",
+			"config": {
+				"profile": "gemini-2_5-flash",
+				"gemini-2_5-flash": {
+					"apikey": "${ROCKETRIDE_GEMINI_KEY}"
+				},
+				"parameters": {}
+			},
+			"input": [
+				{ "lane": "questions", "from": "chat_1" }
+			],
+			"ui": {
+				"position": { "x": 240, "y": 200 },
+				"measured": { "width": 150, "height": 66 }
+			}
+		},
+		{
+			"id": "response_answers_1",
+			"provider": "response_answers",
+			"config": {
+				"laneName": "answers"
+			},
+			"input": [
+				{ "lane": "answers", "from": "llm_gemini_1" }
+			],
+			"ui": {
+				"position": { "x": 460, "y": 200 },
+				"measured": { "width": 150, "height": 66 }
+			}
+		}
+	],
+	"project_id": "e527081e-cbfd-4e99-9e3d-d03ff6182c0f",
+	"viewport": { "x": 0, "y": 0, "zoom": 1 },
+	"version": 1
+}

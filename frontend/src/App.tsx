@@ -50,6 +50,7 @@ export default function App() {
           winnerId={game.winnerId}
           scores={game.scores}
           onRematch={() => game.send({ type: 'rematch' })}
+          onNewMatch={() => game.send({ type: 'leave' })}
         />
       )}
     </>

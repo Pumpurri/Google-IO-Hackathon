@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 export type WebcamState = 'idle' | 'requesting' | 'active' | 'denied' | 'error'
 
@@ -6,6 +6,17 @@ export function useWebcam() {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [state, setState] = useState<WebcamState>('idle')
+
+  // Re-attach stream whenever the video element changes (e.g. after navigating
+  // from Landing to BattleView, videoRef points to a new DOM node).
+  useEffect(() => {
+    const video = videoRef.current
+    const stream = streamRef.current
+    if (video && stream && video.srcObject !== stream) {
+      video.srcObject = stream
+      video.play().catch(() => {})
+    }
+  })
 
   const start = useCallback(async () => {
     setState('requesting')

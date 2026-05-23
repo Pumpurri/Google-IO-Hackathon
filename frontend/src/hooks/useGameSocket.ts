@@ -124,7 +124,15 @@ export function useGameSocket(wsUrl: string, enabled: boolean) {
             commentary: [],
           }))
           break
+
+        case 'error':
+          console.error('[WS] Server error:', msg.message)
+          break
       }
+    }
+
+    ws.onerror = () => {
+      console.error('[WS] Connection error')
     }
 
     ws.onclose = () => {
