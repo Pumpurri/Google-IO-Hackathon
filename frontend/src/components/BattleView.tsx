@@ -63,18 +63,31 @@ export function BattleView({
     <div className="h-screen bg-black flex flex-col overflow-hidden">
       {/* Top HUD bar */}
       <div className="flex items-center justify-between px-4 py-2 bg-gradient-to-b from-black/80 to-transparent absolute top-0 left-0 right-0 z-20">
-        <div className="flex items-center gap-3">
-          {celebration && (
+        {/* Left — my score */}
+        <div className="flex items-center gap-3 min-w-[120px]">
+          {phase === 'performing' && myLiveScore !== null ? (
+            <div className="flex items-center gap-2">
+              <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-emerald-400">{playerName ?? 'You'}</p>
+                <p className={`text-4xl font-black tabular-nums leading-none transition-all duration-500 ${
+                  winning === 'me' ? 'text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.5)]' : winning === 'opp' ? 'text-red-400' : 'text-white'
+                }`}>
+                  {myLiveScore.toFixed(1)}
+                </p>
+              </div>
+            </div>
+          ) : celebration ? (
             <div>
               <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] font-bold">Replicate</p>
               <p className="text-sm font-black uppercase tracking-wider text-emerald-400">
                 {celebration.name}
               </p>
             </div>
-          )}
+          ) : null}
         </div>
 
-        {/* Timer */}
+        {/* Center — Timer */}
         {timerValue !== null && (
           <div className={`flex items-center gap-2 rounded-full px-4 py-1.5 ${
             timerValue <= 3 ? 'bg-red-500/20 border border-red-500/50' : 'bg-zinc-900/80 border border-zinc-700'
@@ -93,6 +106,23 @@ export function BattleView({
             </span>
           </div>
         )}
+
+        {/* Right — opponent score */}
+        <div className="flex items-center justify-end gap-3 min-w-[120px]">
+          {phase === 'performing' && oppLiveScore !== null ? (
+            <div className="flex items-center gap-2">
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-[0.3em] text-red-400 text-right">{opponentName ?? 'Opponent'}</p>
+                <p className={`text-4xl font-black tabular-nums leading-none text-right transition-all duration-500 ${
+                  winning === 'opp' ? 'text-red-400 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]' : winning === 'me' ? 'text-zinc-500' : 'text-white'
+                }`}>
+                  {oppLiveScore.toFixed(1)}
+                </p>
+              </div>
+              <div className="h-2.5 w-2.5 rounded-full bg-red-400 animate-pulse" />
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Main battle area — full screen 2-column */}
@@ -119,19 +149,6 @@ export function BattleView({
             <span className="text-xs font-black uppercase tracking-[0.2em] text-emerald-400 drop-shadow-lg">{playerName ?? 'You'}</span>
           </div>
 
-          {/* Your live score — BIG */}
-          {myLiveScore !== null && (
-            <div className={`absolute top-12 right-3 text-right transition-all duration-500 ${
-              winning === 'me' ? 'scale-110' : ''
-            }`}>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">Live</p>
-              <p className={`text-5xl font-black tabular-nums drop-shadow-[0_0_20px_rgba(52,211,153,0.5)] transition-all duration-500 ${
-                winning === 'me' ? 'text-emerald-400' : winning === 'opp' ? 'text-red-400' : 'text-white'
-              }`}>
-                {myLiveScore.toFixed(1)}
-              </p>
-            </div>
-          )}
           {myScore !== null && myLiveScore === null && (
             <div className="absolute top-12 right-3 text-right">
               <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">Final</p>
@@ -189,19 +206,6 @@ export function BattleView({
             <span className="text-xs font-black uppercase tracking-[0.2em] text-red-400 drop-shadow-lg">{opponentName ?? 'Opponent'}</span>
           </div>
 
-          {/* Opponent live score — BIG */}
-          {oppLiveScore !== null && (
-            <div className={`absolute top-12 right-3 text-right transition-all duration-500 ${
-              winning === 'opp' ? 'scale-110' : ''
-            }`}>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-400">Live</p>
-              <p className={`text-5xl font-black tabular-nums drop-shadow-[0_0_20px_rgba(239,68,68,0.5)] transition-all duration-500 ${
-                winning === 'opp' ? 'text-red-400' : winning === 'me' ? 'text-zinc-500' : 'text-white'
-              }`}>
-                {oppLiveScore.toFixed(1)}
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Small floating reference during performance */}

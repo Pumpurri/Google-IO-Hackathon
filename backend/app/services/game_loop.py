@@ -72,7 +72,25 @@ async def _run_room_game_inner(room_id: str, matchmaker, score_fn=None) -> None:
             "scores": {p.player_id: 3.0 for p in room.players},
         })
 
+    # Simulate live score drift — scores are proportional (sum to 10)
+    async def _score_drift():
+        import random
+        pids = [p.player_id for p in room.players]
+        # Player 1's share of 10 total points — starts at 5.0 (tied)
+        share = 5.0
+        for _ in range(12):
+            await asyncio.sleep(random.uniform(1.5, 2.5))
+            if room.phase != RoomPhase.PERFORMING:
+                break
+            share = round(max(1.0, min(9.0, share + random.uniform(-0.6, 0.6))), 1)
+            await matchmaker.broadcast(room, {
+                "type": "live_scores",
+                "scores": {pids[0]: share, pids[1]: round(10.0 - share, 1)},
+            })
+
+    drift_task = asyncio.create_task(_score_drift())
     await asyncio.sleep(25)
+    drift_task.cancel()
 
     # Stop live commentary — timeout to prevent blocking if WebSocket hangs
     try:
